@@ -1,0 +1,23 @@
+# Секреты и конфигурация
+.env
+*.key
+*.pem
+*.cert
+
+# Данные контейнеров
+grafana/data/
+prometheus/data/
+loki/data/
+
+# Логи
+*.log
+logs/
+
+# Временные файлы
+*.tmp
+*.swp
+*~
+
+# OS файлы
+.DS_Store
+Thumbs.db
