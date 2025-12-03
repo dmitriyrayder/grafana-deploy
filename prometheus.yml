@@ -1,8 +1,148 @@
-global:
-  scrape_interval: 3s
+# ===========================================
+# PROMETHEUS КОНФИГУРАЦИЯ
+# ===========================================
+# Мониторинг Docker контейнеров и ML моделей
 
+global:
+  scrape_interval: 15s  # Собирать метрики каждые 15 секунд
+  evaluation_interval: 15s  # Оценивать правила каждые 15 секунд
+  scrape_timeout: 10s
+
+  external_labels:
+    monitor: 'docker-monitoring'
+    environment: 'production'
+
+# Правила алертов (можно добавить позже)
+# rule_files:
+#   - "/etc/prometheus/alerts.yml"
+
+# Конфигурация scrape jobs
 scrape_configs:
-  - job_name: "litestar"
+  # ============================================
+  # 1. PROMETHEUS - Самомониторинг
+  # ============================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          type: 'monitoring'
+
+  # ============================================
+  # 2. CADVISOR - Метрики Docker контейнеров
+  # ============================================
+  - job_name: 'cadvisor'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'cadvisor'
+          type: 'container-metrics'
+
+  # ============================================
+  # 3. NODE EXPORTER - Системные метрики хоста
+  # ============================================
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node-exporter'
+          type: 'system-metrics'
+
+  # ============================================
+  # 4. BACKEND - Тестовое приложение
+  # ============================================
+  - job_name: "backend"
     metrics_path: /metrics
     static_configs:
       - targets: ["backend:8080"]
+        labels:
+          service: 'backend'
+          type: 'application'
+
+  # ============================================
+  # 5. ML МОДЕЛИ - 6 сервисов (service1-service6)
+  # ============================================
+  # Замените localhost на имена ваших контейнеров
+  # если они запущены через Docker Compose
+
+  - job_name: 'ml-service1'
+    scrape_interval: 30s
+    metrics_path: /metrics  # Измените, если у вас другой путь
+    static_configs:
+      - targets: ['host.docker.internal:8501']  # Порт из nginx конфига
+        labels:
+          service: 'ml-service1'
+          type: 'ml-model'
+          model_name: 'service1'
+    # Если сервис не предоставляет метрики, закомментируйте этот блок
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'up|process_.*|go_.*'
+        action: keep
+
+  - job_name: 'ml-service2'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['host.docker.internal:8502']
+        labels:
+          service: 'ml-service2'
+          type: 'ml-model'
+          model_name: 'service2'
+
+  - job_name: 'ml-service3'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['host.docker.internal:8503']
+        labels:
+          service: 'ml-service3'
+          type: 'ml-model'
+          model_name: 'service3'
+
+  - job_name: 'ml-service4'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['host.docker.internal:8504']
+        labels:
+          service: 'ml-service4'
+          type: 'ml-model'
+          model_name: 'service4'
+
+  - job_name: 'ml-service5'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['host.docker.internal:8505']
+        labels:
+          service: 'ml-service5'
+          type: 'ml-model'
+          model_name: 'service5'
+
+  - job_name: 'ml-service6'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['host.docker.internal:8506']
+        labels:
+          service: 'ml-service6'
+          type: 'ml-model'
+          model_name: 'service6'
+
+  # ============================================
+  # 6. DOCKER DAEMON METRICS (опционально)
+  # ============================================
+  # Требует включения metrics-addr в /etc/docker/daemon.json
+  # {
+  #   "metrics-addr": "127.0.0.1:9323",
+  #   "experimental": true
+  # }
+  #
+  # - job_name: 'docker-daemon'
+  #   static_configs:
+  #     - targets: ['host.docker.internal:9323']
+  #       labels:
+  #         service: 'docker-daemon'
+  #         type: 'docker-metrics'
